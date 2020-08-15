@@ -3,14 +3,14 @@
 #include <cmath>
 #include <string>
 #include <unistd.h>
+#include "landing.h"
 
-using std::cout;
 using std::setw;
 
 int ruined, l2v45z, msgarg;
 bool verbose;
 
-void landMsg(int msg) {
+void landMsg(int msg, std::ostream &cout) {
     switch (msg) {
     case 0:
         cout << "I UNDERSTOOD IT AS NIL.\n"; break;
@@ -73,7 +73,7 @@ struct LEMState {
   double runout;
   int interval;
 
-    void getval(double & val);
+    bool getval(double &val, std::istream &cin, std::ostream &cout);
     void update(double rate) {
         elapsed = elapsed + deltaT;
         remaining = remaining - deltaT;
@@ -90,7 +90,7 @@ struct LEMState {
                   ((impulse * deltaT) * (((((x / (2.0)) + (x2 / (6.0))) +
                                           (x3 / (12.0))) + (x4 / (20.0))) + (x5 / (30.0)))));
     }
-    void init(double fuel) {              
+    void init(double fuel) {
         interval = 10;
         elapsed = 0;
         altitude = 120;
@@ -100,7 +100,7 @@ struct LEMState {
         lunarG = 1.0e-3;
         impulse = 1.8;
     }
-    void report() {
+    void report(std::ostream &cout) {
         cout << setw(5) << round(elapsed) << setw(13) << trunc(altitude) <<
             setw(8) << trunc((((altitude - (trunc(altitude))) * (5280)) + (0.5))) <<
             setw(9) << trunc((((5280) * Vmps) + (0.5))) <<
@@ -110,23 +110,27 @@ struct LEMState {
         cout << '\n';
     }
 
-    void landing(double fuel);
+    void landing(double fuel, std::istream &cin, std::ostream &cout);
     bool run1sec(double rate); // true = on the ground
     bool runinterval(int interval, double rate); // true = on the ground
 };
 
 LEMState cur, saved;
 
-void LEMState::getval(double & val) {
+bool LEMState::getval(double & val, std::istream &cin, std::ostream &cout) {
     int l3v1z;
     std::string str;
     int i = 0;
     l3v1z = 0;
-    std::getline(std::cin, str);
+
+    if (cin.eof())
+        return false;
+    if (!std::getline(cin, str))
+        return false;
 
     do {
         char c = str[i];
-        switch (c) { 
+        switch (c) {
         case 'K': case 'k' : exit(0);
         case 'S': case 's': saved = cur; break;
         case 'T': case 't':
@@ -143,31 +147,29 @@ void LEMState::getval(double & val) {
             c = str[++i];
         }
         if (val == -1) {
-            landMsg(0);
+            landMsg(0, cout);
         } else {
             val = l3v1z;
         }
         break;
     } while (true);
-        if (!isatty(0))
-          cout << str << '\n';
 
+    return true;
 }
 
-void ending() {
-    landMsg(1);
+void ending(std::ostream &cout) {
+    landMsg(1, cout);
     exit(0);
 }
 
-
-void dead() {
-    if (ruined == 1) 
-        landMsg(7); /* splat */
+void dead(std::ostream &cout) {
+    if (ruined == 1)
+        landMsg(7, cout); /* splat */
     else if (ruined < 6)
-        landMsg( ruined ); /* oops again */
+        landMsg(ruined, cout); /* oops again */
     else {
-        landMsg(6); /* enough already */
-        ending();
+        landMsg(6, cout); /* enough already */
+        ending(cout);
     }
 }
 
@@ -179,80 +181,82 @@ bool LEMState::runinterval(int interval, double rate) {
     return false;
 }
 
-void LEMState::landing(double fuel) {
+void LEMState::landing(double fuel, std::istream &cin, std::ostream &cout) {
     std::string str;
     double input;
     verbose = false;
     l2v45z = 0;
     ruined = 0;
   L4354: {
-        landMsg(11);
+        landMsg(11, cout);
         init(fuel);
         if (l2v45z == 0)
             saved = cur;
         else
             l2v45z = 1;
       L4410:
-        report();
-        
+        report(cout);
+
         do {
             cout << "FUEL RATE= ";
-            getval(input);
+            if (!getval(input, cin, cout))
+                return;
             if (((input < 8.0) || (input > 200)) && (input != 0.0)) {
-                landMsg(12);
+                landMsg(12, cout);
             }
         } while (((input < 8.0) || (input > 200)) && (input != 0.0));
         bool landed = runinterval(interval, input);
         if (mass - drymass < 1.0e-3) {
             // fuel out
             msgarg = round(runout);
-            landMsg(13);
+            landMsg(13, cout);
         }
         if (!landed)
             goto L4410;
-      L4514:
+      //L4514:
         msgarg = round(elapsed);
-        landMsg(14); /* on the Moon at ... sec */
+        landMsg(14, cout); /* on the Moon at ... sec */
         Vfps = (5280 * Vmps);
         msgarg = round(Vfps);
-        landMsg(15); /* impact velocity */
+        landMsg(15, cout); /* impact velocity */
         elapsed = mass - drymass;
         if (elapsed < 0.0)
             elapsed = 0.0;
         msgarg = round( elapsed );
-        landMsg(16); /* fuel remaining */
-        if (Vfps <= 3) landMsg(17); /* perfect */
-        else if (Vfps <= 15) landMsg(18); /* good */
-        else if (Vfps <= 35) landMsg(19); /* no Buck Rogers */
-        else if (Vfps <= 80) landMsg(20); /* heavy damage */
+        landMsg(16, cout); /* fuel remaining */
+        if (Vfps <= 3) landMsg(17, cout); /* perfect */
+        else if (Vfps <= 15) landMsg(18, cout); /* good */
+        else if (Vfps <= 35) landMsg(19, cout); /* no Buck Rogers */
+        else if (Vfps <= 80) landMsg(20, cout); /* heavy damage */
         else {
             msgarg = trunc(0.19 * Vfps);
-            landMsg(21); /* crater */
+            landMsg(21, cout); /* crater */
             ruined = ruined + 1;
-            dead();
+            dead(cout);
         }
         do {
             cout << "TRY AGAIN (1) OR NOT (0) ? ";
-            std::getline(std::cin, str);
+            if (!std::getline(cin, str))
+                return;
         } while (str[0] != '0' && str[0] != '1');
         if (str[0] != '0')
             goto L4354;
         if (ruined == 0)
-            landMsg(22);
+            landMsg(22, cout);
         else {
             msgarg = round(ruined * 34.23);
-            landMsg(23);
+            landMsg(23, cout);
             msgarg = ruined;
             if (ruined == 1)
-                landMsg(24);
+                landMsg(24, cout);
             else
-                landMsg(25);
+                landMsg(25, cout);
         }
-        ending();
-        
+        ending(cout);
+
         goto L4410;
     } /* L4354 */
-    ending();
+    ending(cout);
 }
 
 // Returns true at touchdown
@@ -295,7 +299,7 @@ LEMState::run1sec(double rate) {
                     goto L4636;
                 update(rate);
                 if ((-newVmps > 0.0) && (Vmps > 0.0)) {} else goto L4472;
-                goto L4664; 
+                goto L4664;
             } else {
             update(rate);
             goto L4472;
@@ -303,16 +307,17 @@ LEMState::run1sec(double rate) {
     }
 }
 
-main() {
-    landMsg(8);
+void game(std::istream &cin, std::ostream &cout) {
+    landMsg(8, cout);
     cout << "WHAT IS YOURS ? ";
     double input;
-    cur.getval(input);
+    if (!cur.getval(input, cin, cout))
+        return;
     if (trunc(input) < 0 || trunc(input) > 9)
         input = 9.0;
-    landMsg(9);
+    landMsg(9, cout);
     double fuel = round(15000 + input * 500);
     msgarg = fuel;
-    landMsg(10);
-    cur.landing(fuel);
+    landMsg(10, cout);
+    cur.landing(fuel, cin, cout);
 }
