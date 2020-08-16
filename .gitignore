@@ -1,3 +1,5 @@
 *.o
 landing
 tests
+optimize
+lunar

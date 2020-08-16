@@ -239,3 +239,19 @@ TEST_CASE("level1_residual51", "[landing]")
                             "IMPACT VELOCITY OF 2 F.P.S.\n"
                             "FUEL LEFT 51 LBS.", "", "");
 }
+
+//
+// Check level 0: out of fuel.
+//
+TEST_CASE("level0", "[landing]")
+{
+    Interact session(game);
+
+    check_and_send(session, "", "YOURS ? ", "0\n");
+    check_and_send(session, "", "RATE= ", "t{200\n");
+    check_and_send(session, "FUEL OUT AT 75 SECONDS.\n"
+                            "ON THE MOON AT 505 SECONDS.\n"
+                            "IMPACT VELOCITY OF 2110 F.P.S.\n"
+                            "FUEL LEFT 0 LBS.\n"
+                            "THERE'S NOW A NEW LUNAR CRATER 400 FEET DEEP.\n", "", "");
+}
