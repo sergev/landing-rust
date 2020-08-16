@@ -1,6 +1,14 @@
+//
+// Compute an optimal landing control sequence.
+//
 #include <iostream>
 #include "landing.h"
 #include "interact.h"
+#include "catch/catch.hpp"
+
+static std::string reply;
+static int initial_weight; // lbs
+static int initial_fuel;   // lbs
 
 //
 // Return the first n characters of a string.
@@ -32,9 +40,15 @@ std::string last_n(std::string &str, unsigned n)
     return str.substr(len - n);
 }
 
-void check_and_send(Interact &session, const std::string &first, const std::string &last, const std::string &send)
+//
+// Read reply.
+// Rememer it as last_reply for later processing.
+// Make sure the beginning of the reply matches `first' string.
+// Make sure the tail of the reply matches `last' string.
+//
+void check_reply(Interact &session, const std::string &first, const std::string &last)
 {
-    auto reply = session.receive();
+    reply = session.receive();
 
     if (first.size() > 0 &&
         first_n(reply, first.size()) != first)
@@ -43,27 +57,66 @@ void check_and_send(Interact &session, const std::string &first, const std::stri
     if (last.size() > 0 &&
         last_n(reply, last.size()) != last)
         throw std::runtime_error("Wrong prompt, expect: " + last);
+}
 
-    // Debug output: uncomment to see the landing progress.
-    std::cout << reply << send << std::endl;
+//
+// Read reply.
+// Rememer it as last_reply for later processing.
+// Make sure the beginning of the reply matches `first' string.
+// Make sure the tail of the reply matches `last' string.
+// Send the `send' command.
+//
+void check_and_send(Interact &session, const std::string &first, const std::string &last, const std::string &send)
+{
+    check_reply(session, first, last);
+
+    // Debug output.
+    // Comment out this for less verbosity.
+    std::cout << reply << send;
 
     session.send(send);
 }
 
-int main()
+//
+// Send the `send' command.
+// Read reply.
+// Rememer it as last_reply for later processing.
+// Make sure the beginning of the reply matches `first' string.
+// Make sure the tail of the reply matches `last' string.
+//
+void send_and_check(Interact &session, const std::string &send, const std::string &first, const std::string &last)
+{
+    // Comment out this for less verbosity.
+    std::cout << reply << send;
+    std::cout.flush();
+
+    session.send(send);
+
+    check_reply(session, first, last);
+}
+
+//
+// From the last reply, extract values of initial weight and fuel supply.
+//
+void capture_weight_and_fuel()
+{
+    //TODO
+}
+
+void try1()
 {
     Interact session(game);
-#if 0
+
     check_and_send(session, "", "YOURS ? ", "0\n");
     check_and_send(session, "", "RATE= ", "t1200\n");
     check_and_send(session, "", "RATE= ", "200\n");
 
     std::string prompt = "RATE= ";
     for (;;) {
-        auto reply = session.receive();
+        reply = session.receive();
 
         if (last_n(reply, prompt.size()) != prompt) {
-            std::cout << reply << std::endl;
+            std::cout << reply;
             break;
         }
 
@@ -77,8 +130,12 @@ int main()
     // IMPACT VELOCITY OF 482 F.P.S.
     // FUEL LEFT 0 LBS.
     // THERE'S NOW A NEW LUNAR CRATER 91 FEET DEEP.
-#endif
-#if 0
+}
+
+void try2()
+{
+    Interact session(game);
+
     check_and_send(session, "", "YOURS ? ", "0\n");
     check_and_send(session, "", "RATE= ", "t1200\n");
     check_and_send(session, "", "RATE= ", "200\n");
@@ -86,10 +143,10 @@ int main()
 
     std::string prompt = "RATE= ";
     for (;;) {
-        auto reply = session.receive();
+        reply = session.receive();
 
         if (last_n(reply, prompt.size()) != prompt) {
-            std::cout << reply << std::endl;
+            std::cout << reply;
             break;
         }
 
@@ -103,7 +160,12 @@ int main()
     // IMPACT VELOCITY OF 497 F.P.S.
     // FUEL LEFT 0 LBS.
     // THERE'S NOW A NEW LUNAR CRATER 94 FEET DEEP.
-#endif
+}
+
+void try3()
+{
+    Interact session(game);
+
     check_and_send(session, "", "YOURS ? ", "1\n");
     check_and_send(session, "", "RATE= ", "t1200\n");
     check_and_send(session, "", "RATE= ", "200\n");
@@ -150,10 +212,10 @@ int main()
 
     std::string prompt = "RATE= ";
     for (;;) {
-        auto reply = session.receive();
+        reply = session.receive();
 
         if (last_n(reply, prompt.size()) != prompt) {
-            std::cout << reply << std::endl;
+            std::cout << reply;
             break;
         }
 
@@ -162,5 +224,18 @@ int main()
 
         session.send(send);
     }
-    return 0;
+}
+
+//
+// Level 2.
+//
+TEST_CASE("level2", "[landing]")
+{
+    Interact session(game);
+    check_reply(session, "MISSION CONTROL", "YOURS ? ");
+
+    send_and_check(session, "2\n", "", "RATE= ");
+    capture_weight_and_fuel();
+    REQUIRE(initial_weight != 0);
+    REQUIRE(initial_fuel != 0);
 }

@@ -1,0 +1,70 @@
+(empty)
+tv0     - interval 70, fuel rate 0
+200     - fuel rate 200
+t:0     - interval 10, fuel rate 0
+149     - fuel rate 149
+20      - fuel rate 20
+
+$ ./landing
+MISSION CONTROL CALLING LUNAR MODULE:
+MANUAL CONTROL IS NECESSARY FOR LANDING.
+WHAT IS YOUR EXPERIENCE: 0 1 2(STANDARD) 3 4 5 6 7 8 9(NO EXPERIENCE) ?
+WHAT IS YOURS ?
+I UNDERSTOOD IT AS NIL.
+YOU MUST SPECIFY A FUEL RATE EACH 10 SECONDS.
+RATES MUST BE ZERO OR BETWEEN 8 AND 200 LBS.PER SEC.
+YOU HAVE 19500 LBS OF FUEL.
+CAPSULE WEIGHT IS NOW 32500 LBS INCLUDING FUEL.
+COMMENCE LANDING PROCED.
+FIRST RADAR CHECK COMING UP:
+ TIME(SEC) ALT(MILES + FEET) VELOCITY(FPS) FUEL(LBS)
+    0          120       0     5280        19500
+FUEL RATE= tv0
+   70           47    2904     5650        19500
+FUEL RATE= 200
+  140            2     789      708         5500
+FUEL RATE= t:0
+  150            0    4006      761         5500
+FUEL RATE= 149
+  160            0      41       22         4010
+FUEL RATE= 20
+ON THE MOON AT 163 SECONDS.
+IMPACT VELOCITY OF 2 F.P.S.
+FUEL LEFT 3943 LBS.
+PERFECT LANDING. YOU LUCKY JET JOCKEY.
+TRY AGAIN (1) OR NOT (0) ?
+
+
+Посадка на любом уровне выше 1:
+    Tv0
+    200
+    T:0
+    149
+    20
+
+Посадка на уровне 1 (остается 0):
+
+    Tt0
+    T@200
+    T40
+    Tl200
+    T414
+    59
+    8
+
+Посадка на уровне 1 (остается 40):
+    Tu0
+    TE200
+    T30
+    Tf200
+    T340
+    113
+    9
+
+Ещё короче вариант:
+    Tw0
+    Tp200
+    T20
+    T<200
+    T2111
+    38

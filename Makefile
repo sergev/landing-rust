@@ -5,7 +5,7 @@ LIBS            = -lpthread
 
 OBJ             = main.o landing.o
 TEST_OBJ        = test.o landing.o interact.o catch/catch.o
-OPT_OBJ         = optimize.o landing.o interact.o
+OPT_OBJ         = optimize.o landing.o interact.o catch/catch.o
 
 all:            landing tests optimize
 
