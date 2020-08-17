@@ -192,7 +192,7 @@ TEST_CASE("level2", "[landing]")
     REQUIRE(fuel_lbs == prev_fuel_lbs);
 
     double gravity_fpss = (velocity_fps - prev_velocity_fps) / 10.0;
-    std::cout << std::fixed << std::setprecision(1) << "Gravity, fpss: " << gravity_fpss << "\n";
+    std::cout << "Gravity, fpss: " << std::fixed << std::setprecision(1) << gravity_fpss << "\n";
 
     //-------------------------
     // Full thrust for 10 second.
@@ -206,24 +206,47 @@ TEST_CASE("level2", "[landing]")
     REQUIRE(velocity_fps < prev_velocity_fps);
     REQUIRE(fuel_lbs < prev_fuel_lbs);
 
-    int weight_lbs = initial_weight_lbs - initial_fuel_lbs + prev_fuel_lbs; // or current fuel_lbs?
+    int weight_lbs = initial_weight_lbs - initial_fuel_lbs + prev_fuel_lbs;
     double thrust_fps = ((prev_velocity_fps - velocity_fps) / 10.0 + gravity_fpss) * weight_lbs / 200;
-    std::cout << std::fixed << std::setprecision(0) << "Thrust, fps: " << thrust_fps << "\n";
+    std::cout << "Thrust, fps: " << std::fixed << std::setprecision(0) << thrust_fps << "\n";
+
+    //int control0 = std::round(gravity_fpss * weight_lbs / thrust_fps);
+    //std::cout << "Zero control: " << control0 << "\n";
 
     //
-    // Compute optimal thrust.
+    // Control the landing.
     //
     for (;;) {
-        int control = 72;
+        // Compute optimal thrust.
+        weight_lbs = initial_weight_lbs - initial_fuel_lbs + fuel_lbs;
+        double acceleration_fpss = (velocity_fps * velocity_fps / 2.0 / altitude_feet) + gravity_fpss;
+        int control_ls = std::round(acceleration_fpss * weight_lbs / thrust_fps);
 
-std::cout << reply << control << "\n";
-        session.send(std::to_string(control) + "\n");
+        // Estimate the time to arrival.
+        //double tta_sec = velocity_fps / (control_ls * thrust_fps / weight_lbs - gravity_fpss);
+        //std::cout << "Time to arrival, sec: " << std::fixed << std::setprecision(1) << tta_sec << "\n";
+
+        // Estimate fuel consumption.
+        //double fuel_required_lbs = tta_sec * control_ls;
+        //std::cout << "Fuel required, lbs: " << std::fixed << std::setprecision(1) << fuel_required_lbs << "\n";
+
+        if (control_ls * 1 > fuel_lbs) {
+            control_ls = fuel_lbs;
+        }
+
+        std::string command;
+        if (time_sec == 20)
+            command += "t1";
+        command += std::to_string(control_ls) + "\n";
+        std::cout << reply << command;
+        session.send(command);
         reply = session.receive();
 
         if (last_n(reply, prompt.size()) != prompt)
             break;
 
         check_reply(" ", prompt);
+        capture_state(reply);
     }
     std::cout << reply << std::endl;
 }
