@@ -160,7 +160,7 @@ TEST_CASE("level2", "[landing]")
     //
     reply = session.receive();
     check_reply("MISSION CONTROL", "YOURS ? ");
-    send_and_check(session, "2\n", "YOU MUST SPECIFY", "RATE= ");
+    send_and_check(session, "1\n", "YOU MUST SPECIFY", "RATE= ");
 
     // Get initial weight and fuel supply.
     capture_weight_and_fuel();
@@ -214,7 +214,106 @@ TEST_CASE("level2", "[landing]")
     //std::cout << "Zero control: " << control0 << "\n";
 
     //
-    // Control the landing.
+    // Phase 1: free fall.
+    //
+    for (bool first_iteration = true; ; first_iteration = false) {
+        // Compute optimal thrust.
+        weight_lbs = initial_weight_lbs - initial_fuel_lbs + fuel_lbs;
+        double acceleration_fpss = (velocity_fps * velocity_fps / 2.0 / altitude_feet) + gravity_fpss;
+        int control_ls = std::round(acceleration_fpss * weight_lbs / thrust_fps);
+
+        if (control_ls > 200) {
+            // Start decelerating.
+            break;
+        }
+
+        std::string command;
+        if (first_iteration)
+            command += "t1";
+        command += "0\n";
+        std::cout << reply << command;
+        session.send(command);
+        reply = session.receive();
+//std::cout << reply << std::endl;
+
+        check_reply(" ", prompt);
+        capture_state(reply);
+    }
+
+    //
+    // Phase 2: deceleration.
+    //
+    for (;;) {
+        // Compute optimal thrust.
+        weight_lbs = initial_weight_lbs - initial_fuel_lbs + fuel_lbs;
+        double acceleration_fpss = (velocity_fps * velocity_fps / 2.0 / altitude_feet) + gravity_fpss;
+        int control_ls = std::round(acceleration_fpss * weight_lbs / thrust_fps);
+
+        if (control_ls < 120) {
+            // Done decelerating.
+            break;
+        }
+
+        std::string command = "200\n";
+        std::cout << reply << command;
+        session.send(command);
+        reply = session.receive();
+//std::cout << reply << std::endl;
+
+        check_reply(" ", prompt);
+        capture_state(reply);
+    }
+
+    //
+    // Phase 3: free fall.
+    //
+    for (;;) {
+        // Compute optimal thrust.
+        weight_lbs = initial_weight_lbs - initial_fuel_lbs + fuel_lbs;
+        double acceleration_fpss = (velocity_fps * velocity_fps / 2.0 / altitude_feet) + gravity_fpss;
+        int control_ls = std::round(acceleration_fpss * weight_lbs / thrust_fps);
+
+        if (control_ls > 195) {
+            // Start decelerating.
+            break;
+        }
+
+        std::string command = "0\n";
+        std::cout << reply << command;
+        session.send(command);
+        reply = session.receive();
+//std::cout << reply << std::endl;
+
+        check_reply(" ", prompt);
+        capture_state(reply);
+    }
+
+    //
+    // Phase 4: deceleration.
+    //
+    for (;;) {
+        // Compute optimal thrust.
+//        weight_lbs = initial_weight_lbs - initial_fuel_lbs + fuel_lbs;
+//        double acceleration_fpss = (velocity_fps * velocity_fps / 2.0 / altitude_feet) + gravity_fpss;
+//        int control_ls = std::round(acceleration_fpss * weight_lbs / thrust_fps);
+
+        if (/*control_ls < 80 ||*/ altitude_feet < 6000) {
+            // Done decelerating.
+            break;
+        }
+
+        std::string command = "200\n";
+        std::cout << reply << command;
+        session.send(command);
+        reply = session.receive();
+//std::cout << reply << std::endl;
+
+        check_reply(" ", prompt);
+        capture_state(reply);
+    }
+
+    //
+    // Phase 5: control the landing.
     //
     for (;;) {
         // Compute optimal thrust.
@@ -230,17 +329,23 @@ TEST_CASE("level2", "[landing]")
         //double fuel_required_lbs = tta_sec * control_ls;
         //std::cout << "Fuel required, lbs: " << std::fixed << std::setprecision(1) << fuel_required_lbs << "\n";
 
-        if (control_ls * 1 > fuel_lbs) {
-            control_ls = fuel_lbs;
+//        if (control_ls < 150) {
+            // Too early, continue free fall.
+//            control_ls = 0;
+//        }
+
+        if (control_ls > 200) {
+            control_ls = 200;
+        }
+        if (control_ls > 0 && control_ls < 8) {
+            control_ls = 8;
         }
 
-        std::string command;
-        if (time_sec == 20)
-            command += "t1";
-        command += std::to_string(control_ls) + "\n";
+        std::string command = std::to_string(control_ls) + "\n";
         std::cout << reply << command;
         session.send(command);
         reply = session.receive();
+//std::cout << reply << std::endl;
 
         if (last_n(reply, prompt.size()) != prompt)
             break;
